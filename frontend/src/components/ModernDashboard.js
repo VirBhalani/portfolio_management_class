@@ -11,6 +11,8 @@ import {
   FormControl,
   Select,
   MenuItem,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -119,6 +121,8 @@ export const ModernDashboard = () => {
   const [perf, setPerf] = useState(null);
   const [income, setIncome] = useState(null);
   const [newName, setNewName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchPortfolios();
@@ -153,17 +157,29 @@ export const ModernDashboard = () => {
   const createPortfolio = async (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
+    
+    setLoading(true);
+    setError('');
+    
     try {
+      console.log('Creating portfolio with name:', newName);
+      console.log('API Base URL:', API_BASE);
+      
       const result = await apiCall('/api/portfolios', {
         method: 'POST',
         body: JSON.stringify({ name: newName }),
       });
-      console.log('Portfolio created:', result);
+      
+      console.log('Portfolio created successfully:', result);
       setNewName('');
       await fetchPortfolios();
+      setError('');
     } catch (error) {
       console.error('Error creating portfolio:', error);
-      alert('Failed to create portfolio. Check console for details.');
+      const errorMsg = error.message || 'Failed to create portfolio. Please check your backend connection.';
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,29 +201,43 @@ export const ModernDashboard = () => {
           <Typography variant="h6" fontWeight="medium" mb={2}>
             Create Portfolio
           </Typography>
-          <Box component="form" onSubmit={createPortfolio} sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              fullWidth
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Portfolio name"
-              variant="outlined"
-              size="small"
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              sx={{
-                minWidth: 'auto',
-                px: 2,
-                background: 'linear-gradient(to right, #1976d2, #7b1fa2)',
-                '&:hover': {
-                  background: 'linear-gradient(to right, #1565c0, #6a1b9a)',
-                }
-              }}
-            >
-              <AddIcon />
-            </Button>
+          <Box component="form" onSubmit={createPortfolio} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                fullWidth
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Portfolio name"
+                variant="outlined"
+                size="small"
+                disabled={loading}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={loading || !newName.trim()}
+                sx={{
+                  minWidth: 'auto',
+                  px: 2,
+                  background: 'linear-gradient(to right, #1976d2, #7b1fa2)',
+                  '&:hover': {
+                    background: 'linear-gradient(to right, #1565c0, #6a1b9a)',
+                  }
+                }}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : <AddIcon />}
+              </Button>
+            </Box>
+            {error && (
+              <Alert severity="error" onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
+            {loading && (
+              <Alert severity="info">
+                Creating portfolio...
+              </Alert>
+            )}
           </Box>
         </Card>
 
