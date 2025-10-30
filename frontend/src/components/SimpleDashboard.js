@@ -16,6 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  LinearProgress,
+  Chip,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -23,6 +25,8 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import PieChartIcon from '@mui/icons-material/PieChart';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import WarningIcon from '@mui/icons-material/Warning';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 
 // Local Storage Helper Functions
 const STORAGE_KEY = 'portfolios';
@@ -34,6 +38,98 @@ const getPortfolios = () => {
 
 const savePortfolios = (portfolios) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolios));
+};
+
+// Risk Assessment Functions
+const calculateRiskMetrics = (investments) => {
+  if (!investments || investments.length === 0) {
+    return {
+      riskScore: 0,
+      diversificationScore: 0,
+      volatility: 0,
+      sharpeRatio: 0,
+      maxDrawdown: 0,
+      var95: 0,
+      riskLevel: 'Low',
+      recommendations: []
+    };
+  }
+
+  // Calculate asset allocation
+  const totalValue = investments.reduce((sum, inv) => sum + (inv.quantity * inv.currentPrice), 0);
+  const allocation = {};
+  investments.forEach(inv => {
+    const value = inv.quantity * inv.currentPrice;
+    const percentage = (value / totalValue) * 100;
+    allocation[inv.type] = (allocation[inv.type] || 0) + percentage;
+  });
+
+  // Diversification Score (0-100)
+  const numAssetTypes = Object.keys(allocation).length;
+  const numInvestments = investments.length;
+  const diversificationScore = Math.min(100, (numAssetTypes * 20) + (numInvestments * 5));
+
+  // Concentration Risk
+  const maxConcentration = Math.max(...Object.values(allocation));
+  const concentrationRisk = maxConcentration > 50 ? 'High' : maxConcentration > 30 ? 'Medium' : 'Low';
+
+  // Volatility Estimate (based on asset types)
+  const volatilityWeights = { STOCK: 0.25, BOND: 0.05, GOLD: 0.15, CASH: 0.01 };
+  const volatility = investments.reduce((sum, inv) => {
+    const value = inv.quantity * inv.currentPrice;
+    const weight = value / totalValue;
+    return sum + (weight * (volatilityWeights[inv.type] || 0.2));
+  }, 0) * 100;
+
+  // Sharpe Ratio Estimate (simplified)
+  const returns = investments.reduce((sum, inv) => {
+    const gain = ((inv.currentPrice - inv.purchasePrice) / inv.purchasePrice) * 100;
+    return sum + gain;
+  }, 0) / investments.length;
+  const sharpeRatio = volatility > 0 ? returns / volatility : 0;
+
+  // Risk Score (0-100, higher = riskier)
+  const riskScore = Math.min(100, Math.max(0, 
+    (volatility * 2) + 
+    (maxConcentration * 0.5) - 
+    (diversificationScore * 0.3)
+  ));
+
+  // Risk Level
+  let riskLevel = 'Low';
+  if (riskScore > 70) riskLevel = 'High';
+  else if (riskScore > 40) riskLevel = 'Medium';
+
+  // Generate Recommendations
+  const recommendations = [];
+  if (maxConcentration > 40) {
+    recommendations.push(`High concentration in ${Object.entries(allocation).find(([k, v]) => v === maxConcentration)[0]} (${maxConcentration.toFixed(1)}%). Consider diversifying.`);
+  }
+  if (numAssetTypes < 3) {
+    recommendations.push('Portfolio has limited asset types. Consider adding different asset classes.');
+  }
+  if (numInvestments < 5) {
+    recommendations.push('Portfolio has few investments. Consider adding more for better diversification.');
+  }
+  if (allocation.STOCK > 70) {
+    recommendations.push('High stock allocation increases volatility. Consider adding bonds or gold.');
+  }
+  if (!allocation.BOND && totalValue > 100000) {
+    recommendations.push('No bonds in portfolio. Bonds can provide stability and reduce risk.');
+  }
+
+  return {
+    riskScore: Math.round(riskScore),
+    diversificationScore: Math.round(diversificationScore),
+    volatility: volatility.toFixed(2),
+    sharpeRatio: sharpeRatio.toFixed(2),
+    maxDrawdown: (volatility * 1.5).toFixed(2),
+    var95: (volatility * 1.65).toFixed(2),
+    riskLevel,
+    concentrationRisk,
+    allocation,
+    recommendations
+  };
 };
 
 const StatCard = ({ title, value, change, icon: Icon }) => (
@@ -205,6 +301,7 @@ export const SimpleDashboard = () => {
   };
 
   const stats = calculateStats();
+  const riskMetrics = selected ? calculateRiskMetrics(selected.investments) : null;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
@@ -325,6 +422,161 @@ export const SimpleDashboard = () => {
                 />
               </Grid>
             </Grid>
+
+            {/* Risk Assessment Section */}
+            {selected && selected.investments.length > 0 && riskMetrics && (
+              <Card sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                  <TrackChangesIcon color="primary" />
+                  <Typography variant="h6" fontWeight="medium">
+                    Risk Analysis
+                  </Typography>
+                  <Chip 
+                    label={riskMetrics.riskLevel}
+                    color={
+                      riskMetrics.riskLevel === 'High' ? 'error' : 
+                      riskMetrics.riskLevel === 'Medium' ? 'warning' : 'success'
+                    }
+                    size="small"
+                    sx={{ ml: 1 }}
+                  />
+                </Box>
+
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary" mb={1}>
+                        Risk Score
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" mb={1}>
+                        {riskMetrics.riskScore}/100
+                      </Typography>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={riskMetrics.riskScore} 
+                        color={
+                          riskMetrics.riskScore > 70 ? 'error' : 
+                          riskMetrics.riskScore > 40 ? 'warning' : 'success'
+                        }
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Diversification
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" mb={1}>
+                        {riskMetrics.diversificationScore}/100
+                      </Typography>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={riskMetrics.diversificationScore} 
+                        color="primary"
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Volatility
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold">
+                        {riskMetrics.volatility}%
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Sharpe Ratio
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold">
+                        {riskMetrics.sharpeRatio}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        VaR (95%)
+                      </Typography>
+                      <Typography variant="h6" fontWeight="bold">
+                        {riskMetrics.var95}%
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Max Drawdown
+                      </Typography>
+                      <Typography variant="h6" fontWeight="bold">
+                        {riskMetrics.maxDrawdown}%
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Concentration Risk
+                      </Typography>
+                      <Chip 
+                        label={riskMetrics.concentrationRisk}
+                        color={
+                          riskMetrics.concentrationRisk === 'High' ? 'error' : 
+                          riskMetrics.concentrationRisk === 'Medium' ? 'warning' : 'success'
+                        }
+                        sx={{ mt: 1 }}
+                      />
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {/* Asset Allocation */}
+                {riskMetrics.allocation && Object.keys(riskMetrics.allocation).length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" fontWeight="medium" mb={2}>
+                      Asset Allocation
+                    </Typography>
+                    <Grid container spacing={2}>
+                      {Object.entries(riskMetrics.allocation).map(([type, percentage]) => (
+                        <Grid item xs={6} md={3} key={type}>
+                          <Box sx={{ p: 2, bgcolor: 'primary.light', borderRadius: 2, textAlign: 'center' }}>
+                            <Typography variant="body2" color="primary.contrastText">
+                              {type}
+                            </Typography>
+                            <Typography variant="h6" fontWeight="bold" color="primary.contrastText">
+                              {percentage.toFixed(1)}%
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                )}
+
+                {/* Recommendations */}
+                {riskMetrics.recommendations && riskMetrics.recommendations.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight="medium" mb={2} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <WarningIcon color="warning" fontSize="small" />
+                      Recommendations
+                    </Typography>
+                    <Box sx={{ '& > :not(:last-child)': { mb: 1 } }}>
+                      {riskMetrics.recommendations.map((rec, idx) => (
+                        <Alert key={idx} severity="info" sx={{ bgcolor: 'info.light' }}>
+                          {rec}
+                        </Alert>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Card>
+            )}
 
             {selected && selected.investments.length > 0 && (
               <Card sx={{ p: 3 }}>
