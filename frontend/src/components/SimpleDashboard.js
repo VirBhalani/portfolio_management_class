@@ -311,7 +311,7 @@ export const SimpleDashboard = () => {
             Portfolio Manager
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Local Storage Version - No Backend Required
+            Professional Investment Management
           </Typography>
         </Box>
       </Box>
