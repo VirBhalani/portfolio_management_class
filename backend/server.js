@@ -7,9 +7,24 @@ const { analyzePerformance, generatePerformanceReport, calculateIncomeProjection
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS configuration - Allow all origins for simplicity
+app.use(cors({
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Backend is running' });
+});
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Portfolio Management API', status: 'running' });
+});
 
 // Hardcoded users for testing
 const users = [

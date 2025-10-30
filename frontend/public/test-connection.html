@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-box {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .success { border-color: #4caf50; background: #f1f8f4; }
+        .error { border-color: #f44336; background: #fef1f0; }
+        .info { border-color: #2196f3; background: #e3f2fd; }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #1976d2; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Backend Connection Test</h1>
+    
+    <div class="test-box info">
+        <h3>Step 1: Configure Backend URL</h3>
+        <label>Backend URL:</label>
+        <input type="text" id="backendUrl" placeholder="https://your-backend.onrender.com" value="http://localhost:5004">
+        <button onclick="saveUrl()">Save URL</button>
+        <p><small>Current: <span id="currentUrl">Not set</span></small></p>
+    </div>
+
+    <div class="test-box">
+        <h3>Step 2: Test Connection</h3>
+        <button onclick="testConnection()">Test Backend Connection</button>
+        <div id="connectionResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h3>Step 3: Test Portfolio API</h3>
+        <button onclick="testPortfolioAPI()">Test Get Portfolios</button>
+        <div id="portfolioResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h3>Step 4: Create Test Portfolio</h3>
+        <input type="text" id="portfolioName" placeholder="Enter portfolio name" value="Test Portfolio">
+        <button onclick="createTestPortfolio()">Create Portfolio</button>
+        <div id="createResult"></div>
+    </div>
+
+    <script>
+        let API_URL = localStorage.getItem('testApiUrl') || 'http://localhost:5004';
+        document.getElementById('currentUrl').textContent = API_URL;
+        document.getElementById('backendUrl').value = API_URL;
+
+        function saveUrl() {
+            const url = document.getElementById('backendUrl').value.trim();
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+            API_URL = url.replace(/\/$/, ''); // Remove trailing slash
+            localStorage.setItem('testApiUrl', API_URL);
+            document.getElementById('currentUrl').textContent = API_URL;
+            alert('URL saved! Now test the connection.');
+        }
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = '<p>Testing connection...</p>';
+            
+            try {
+                console.log('Testing:', API_URL + '/health');
+                const response = await fetch(API_URL + '/health', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                console.log('Response:', data);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Connection Successful!</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Connection Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Possible causes:</strong></p>
+                        <ul>
+                            <li>Backend is not running</li>
+                            <li>Wrong URL configured</li>
+                            <li>CORS issue</li>
+                            <li>Network problem</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        async function testPortfolioAPI() {
+            const resultDiv = document.getElementById('portfolioResult');
+            resultDiv.innerHTML = '<p>Testing portfolio API...</p>';
+            
+            try {
+                console.log('Testing:', API_URL + '/api/portfolios');
+                const response = await fetch(API_URL + '/api/portfolios', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Portfolios:', data);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Portfolio API Working!</h4>
+                        <p>Found ${data.length} portfolio(s)</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Portfolio API Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function createTestPortfolio() {
+            const resultDiv = document.getElementById('createResult');
+            const name = document.getElementById('portfolioName').value.trim();
+            
+            if (!name) {
+                alert('Please enter a portfolio name');
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Creating portfolio...</p>';
+            
+            try {
+                console.log('Creating portfolio:', name);
+                const response = await fetch(API_URL + '/api/portfolios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Created:', data);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Portfolio Created!</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Create Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
