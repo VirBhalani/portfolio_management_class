@@ -48,14 +48,29 @@ ChartJS.register(
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5004';
 
 const apiCall = async (endpoint, options = {}) => {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-  return response.json();
+  try {
+    console.log('API Call:', `${API_BASE}${endpoint}`, options);
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', response.status, errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('API Response:', data);
+    return data;
+  } catch (error) {
+    console.error('API Call Failed:', error);
+    throw error;
+  }
 };
 
 const StatCard = ({ title, value, change, icon: Icon }) => (
@@ -124,20 +139,32 @@ export const ModernDashboard = () => {
   }, [selected]);
 
   const fetchPortfolios = async () => {
-    const data = await apiCall('/api/portfolios');
-    setPortfolios(data);
-    if (data.length > 0) setSelected(data[0]);
+    try {
+      const data = await apiCall('/api/portfolios');
+      console.log('Fetched portfolios:', data);
+      setPortfolios(data);
+      if (data.length > 0) setSelected(data[0]);
+    } catch (error) {
+      console.error('Error fetching portfolios:', error);
+      setPortfolios([]);
+    }
   };
 
   const createPortfolio = async (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    await apiCall('/api/portfolios', {
-      method: 'POST',
-      body: JSON.stringify({ name: newName }),
-    });
-    setNewName('');
-    fetchPortfolios();
+    try {
+      const result = await apiCall('/api/portfolios', {
+        method: 'POST',
+        body: JSON.stringify({ name: newName }),
+      });
+      console.log('Portfolio created:', result);
+      setNewName('');
+      await fetchPortfolios();
+    } catch (error) {
+      console.error('Error creating portfolio:', error);
+      alert('Failed to create portfolio. Check console for details.');
+    }
   };
 
   return (
