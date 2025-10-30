@@ -6,10 +6,13 @@ const Gold = require('../models/Gold');
 const riskAssessment = require('../services/riskAssessment');
 const realTimeService = require('../services/realTimeService');
 
+// Default user ID for no-auth mode
+const DEFAULT_USER_ID = 'default-user';
+
 exports.createPortfolio = async (req, res) => {
   try {
     const { name, targetAllocation } = req.body;
-    const userId = req.user._id;
+    const userId = req.user?._id || DEFAULT_USER_ID;
 
     const portfolio = new Portfolio({
       portfolioId: 'PORT' + Date.now(),
@@ -31,9 +34,24 @@ exports.createPortfolio = async (req, res) => {
 
 exports.getPortfolio = async (req, res) => {
   try {
+    const userId = req.user?._id || DEFAULT_USER_ID;
+    
+    // If no portfolioId, return all portfolios for the user
+    if (!req.params.portfolioId) {
+      const portfolios = await Portfolio.find({ userId }).populate('investments');
+      
+      // Update total value for each portfolio
+      for (const portfolio of portfolios) {
+        await portfolio.updateTotalValue();
+      }
+      
+      return res.json(portfolios);
+    }
+    
+    // Get single portfolio
     const portfolio = await Portfolio.findOne({
       portfolioId: req.params.portfolioId,
-      userId: req.user._id
+      userId
     }).populate('investments');
 
     if (!portfolio) {
@@ -53,7 +71,7 @@ exports.addInvestment = async (req, res) => {
     const { type, symbol, quantity, purchasePrice, ...investmentData } = req.body;
     const portfolio = await Portfolio.findOne({
       portfolioId: req.params.portfolioId,
-      userId: req.user._id
+      userId: req.user?._id || DEFAULT_USER_ID
     });
 
     if (!portfolio) {
@@ -101,7 +119,7 @@ exports.removeInvestment = async (req, res) => {
   try {
     const portfolio = await Portfolio.findOne({
       portfolioId: req.params.portfolioId,
-      userId: req.user._id
+      userId: req.user?._id || DEFAULT_USER_ID
     });
 
     if (!portfolio) {
@@ -124,7 +142,7 @@ exports.getPortfolioAnalytics = async (req, res) => {
   try {
     const portfolio = await Portfolio.findOne({
       portfolioId: req.params.portfolioId,
-      userId: req.user._id
+      userId: req.user?._id || DEFAULT_USER_ID
     }).populate('investments');
 
     if (!portfolio) {
@@ -157,7 +175,7 @@ exports.optimizePortfolio = async (req, res) => {
   try {
     const portfolio = await Portfolio.findOne({
       portfolioId: req.params.portfolioId,
-      userId: req.user._id
+      userId: req.user?._id || DEFAULT_USER_ID
     }).populate('investments');
 
     if (!portfolio) {

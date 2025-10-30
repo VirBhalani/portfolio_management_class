@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+// const auth = require('../middleware/auth'); // Authentication disabled
 const {
   createPortfolio,
   getPortfolio,
@@ -10,10 +10,11 @@ const {
   optimizePortfolio
 } = require('../controllers/portfolioController');
 
-// All routes require authentication
-router.use(auth);
+// All routes require authentication - DISABLED FOR DIRECT ACCESS
+// router.use(auth);
 
 // Portfolio routes
+router.get('/', getPortfolio); // Get all portfolios for default user
 router.post('/', createPortfolio);
 router.get('/:portfolioId', getPortfolio);
 router.get('/:portfolioId/analytics', getPortfolioAnalytics);

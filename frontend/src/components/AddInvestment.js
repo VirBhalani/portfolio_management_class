@@ -35,12 +35,10 @@ const AddInvestment = ({ portfolioId, onSuccess }) => {
 
     try {
       const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5004';
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/api/portfolios/${portfolioId}/investments`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` })
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           type: formData.type,
