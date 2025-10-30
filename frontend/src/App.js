@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box, CircularProgress } from '@mui/material';
-import Login from './components/Login';
+import { CssBaseline } from '@mui/material';
 import ModernDashboard from './components/ModernDashboard';
 
 const theme = createTheme({
@@ -13,56 +12,13 @@ const theme = createTheme({
   },
 });
 
-const AuthLayout = ({ children }) => {
-  const [checking, setChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const location = useLocation();
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-    setChecking(false);
-  }, []);
-
-  if (checking) {
-    return (
-      <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!isAuthenticated && location.pathname !== '/login') {
-    return <Navigate to="/login" replace />;
-  }
-  if (isAuthenticated && location.pathname === '/login') {
-    return <Navigate to="/" replace />;
-  }
-  return children;
-};
-
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
         <Routes>
-          <Route
-            path="/login"
-            element={
-              <AuthLayout>
-                <Login />
-              </AuthLayout>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <AuthLayout>
-                <ModernDashboard />
-              </AuthLayout>
-            }
-          />
+          <Route path="/" element={<ModernDashboard />} />
         </Routes>
       </Router>
     </ThemeProvider>

@@ -45,15 +45,13 @@ ChartJS.register(
   ArcElement
 );
 
-const API_BASE = 'http://localhost:5004';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5004';
 
 const apiCall = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('token');
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
   });
@@ -99,7 +97,7 @@ const StatCard = ({ title, value, change, icon: Icon }) => (
   </Card>
 );
 
-export const ModernDashboard = ({ user }) => {
+export const ModernDashboard = () => {
   const [portfolios, setPortfolios] = useState([]);
   const [selected, setSelected] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -150,7 +148,7 @@ export const ModernDashboard = ({ user }) => {
             Portfolio Manager
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Welcome, {user?.name}
+            Professional Investment Management
           </Typography>
         </Box>
       </Box>
