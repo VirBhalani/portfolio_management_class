@@ -1,0 +1,39 @@
+version: '3.9'
+services:
+  backend:
+    build: ./backend
+    container_name: portfolio-backend
+    ports:
+      - "5004:5004"
+    environment:
+      - NODE_ENV=production
+      - PORT=5004
+      - JWT_SECRET=${JWT_SECRET:-change_me}
+      - INDIAN_API_KEY=${INDIAN_API_KEY:-sk-live-cS2JwcbEalMlqb3BZD9T3qUdLWTHkBQnAo4mv467}
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/portfolio_management}
+      - CORS_ORIGIN=*
+    working_dir: /app
+    restart: unless-stopped
+    # depends_on:
+    #   - mongo
+
+  frontend:
+    build: ./frontend
+    container_name: portfolio-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # mongo:
+  #   image: mongo:6
+  #   container_name: portfolio-mongo
+  #   restart: unless-stopped
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo_data:/data/db
+
+# volumes:
+#   mongo_data:

@@ -48,10 +48,12 @@ ChartJS.register(
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5004';
 
 const apiCall = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('token');
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
   });
@@ -97,7 +99,7 @@ const StatCard = ({ title, value, change, icon: Icon }) => (
   </Card>
 );
 
-export const ModernDashboard = () => {
+export const ModernDashboard = ({ user }) => {
   const [portfolios, setPortfolios] = useState([]);
   const [selected, setSelected] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -148,7 +150,7 @@ export const ModernDashboard = () => {
             Portfolio Manager
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Professional Investment Management
+            Welcome, {user?.name || 'User'}
           </Typography>
         </Box>
       </Box>
